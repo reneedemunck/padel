@@ -1,0 +1,123 @@
+
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <title>Padel Toernooi Scorebord</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { font-family: sans-serif; padding: 10px; max-width: 800px; margin: auto; }
+        h2 { margin-top: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+        input[type="number"] { width: 50px; }
+        .match { margin-bottom: 10px; }
+        .team { display: inline-block; width: 45%; }
+        .score-input { width: 40px; }
+        @media (max-width: 600px) {
+            .team { display: block; width: 100%; margin-bottom: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Padel Toernooi Scorebord</h1>
+    <div id="matches"></div>
+    <h2>Ranglijst</h2>
+    <table id="ranking">
+        <thead>
+            <tr><th>Speler</th><th>Punten</th><th>Games Voor</th><th>Games Tegen</th></tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+<script>
+const players = ["Renee", "Bas", "Bob", "Erwin", "Rob", "Willem", "Ron", "Matthijs"];
+const rounds = [
+    [["Renee", "Matthijs"], ["Erwin", "Rob"]],
+    [["Bas", "Willem"], ["Bob", "Ron"]],
+    [["Erwin", "Matthijs"], ["Bob", "Willem"]],
+    [["Renee", "Bas"], ["Rob", "Ron"]],
+    [["Rob", "Ron"], ["Bob", "Matthijs"]],
+    [["Erwin", "Willem"], ["Renee", "Bas"]],
+    [["Erwin", "Ron"], ["Renee", "Rob"]],
+    [["Willem", "Matthijs"], ["Bas", "Bob"]],
+    [["Rob", "Willem"], ["Erwin", "Matthijs"]],
+    [["Bas", "Ron"], ["Renee", "Bob"]],
+    [["Bob", "Rob"], ["Renee", "Matthijs"]],
+    [["Willem", "Ron"], ["Bas", "Erwin"]]
+];
+
+function saveScores() {
+    const scores = {};
+    document.querySelectorAll(".score-input").forEach(input => {
+        scores[input.id] = input.value;
+    });
+    localStorage.setItem("padelScores", JSON.stringify(scores));
+}
+
+function loadScores() {
+    return JSON.parse(localStorage.getItem("padelScores") || "{}");
+}
+
+function updateRanking() {
+    const scores = loadScores();
+    const stats = {};
+    players.forEach(p => stats[p] = { punten: 0, voor: 0, tegen: 0 });
+
+    rounds.forEach(([[a1, a2], [b1, b2]], i) => {
+        const s1 = parseInt(scores[`r${i}_t1`]);
+        const s2 = parseInt(scores[`r${i}_t2`]);
+        if (isNaN(s1) || isNaN(s2)) return;
+
+        [a1, a2].forEach(p => { stats[p].voor += s1; stats[p].tegen += s2; });
+        [b1, b2].forEach(p => { stats[p].voor += s2; stats[p].tegen += s1; });
+
+        if (s1 > s2) [a1, a2].forEach(p => stats[p].punten += 3);
+        else if (s2 > s1) [b1, b2].forEach(p => stats[p].punten += 3);
+        else [a1, a2, b1, b2].forEach(p => stats[p].punten += 1);
+    });
+
+    const tbody = document.querySelector("#ranking tbody");
+    tbody.innerHTML = "";
+    players.sort((a, b) => {
+        const pa = stats[a], pb = stats[b];
+        if (pb.punten !== pa.punten) return pb.punten - pa.punten;
+        const diffA = pa.voor - pa.tegen;
+        const diffB = pb.voor - pb.tegen;
+        return diffB - diffA;
+    }).forEach(p => {
+        const s = stats[p];
+        const row = `<tr><td>${p}</td><td>${s.punten}</td><td>${s.voor}</td><td>${s.tegen}</td></tr>`;
+        tbody.insertAdjacentHTML("beforeend", row);
+    });
+}
+
+function renderMatches() {
+    const container = document.getElementById("matches");
+    const scores = loadScores();
+    rounds.forEach(([[a1, a2], [b1, b2]], i) => {
+        const html = `
+        <div class="match">
+            <strong>Ronde ${i + 1}</strong><br>
+            <span class="team">${a1} & ${a2}</span>
+            <input type="number" min="0" id="r${i}_t1" class="score-input" value="${scores[`r${i}_t1`] || ""}">
+            -
+            <input type="number" min="0" id="r${i}_t2" class="score-input" value="${scores[`r${i}_t2`] || ""}">
+            <span class="team">${b1} & ${b2}</span>
+        </div>`;
+        container.insertAdjacentHTML("beforeend", html);
+    });
+
+    document.querySelectorAll(".score-input").forEach(input => {
+        input.addEventListener("input", () => {
+            saveScores();
+            updateRanking();
+        });
+    });
+}
+
+renderMatches();
+updateRanking();
+</script>
+</body>
+</html>
